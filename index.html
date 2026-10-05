@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1210">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="每日上報">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1210'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11' fill='none' stroke='%235fc59a' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>每日上報清單</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;700&family=Noto+Serif+HK:wght@700;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+html,body{margin:0}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+/* Layout: one narrow column, a time-clock "punch card" for today, then a ledger of past days */
+:root{
+  --bg:#0d1210; --card:#151c19; --ink:#e4ece7; --muted:#8a9a92; --line:#26332d;
+  --accent:#5fc59a; --accent-soft:#1a3529; --late:#ec8a72; --late-soft:#3a201a; --warn:#e2b45a; --warn-soft:#352b15;
+  --display:"Noto Serif HK","Songti TC",serif; --body:"Noto Sans HK","PingFang HK","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;padding:0 16px}
+.wrap{max-width:640px;margin:0 auto;padding-block:28px 56px;display:flex;flex-direction:column;gap:22px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;font-family:var(--mono)}
+h1{font-family:var(--display);font-weight:900;font-size:30px;margin:2px 0 0;text-wrap:balance;line-height:1.2}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:4px 10px;border-radius:999px;font-weight:500;white-space:nowrap}
+.chip.ok{background:var(--accent-soft);color:var(--accent)}
+.chip.late{background:var(--late-soft);color:var(--late)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.mute{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:16px;position:relative}
+.punch{border-top:6px solid var(--accent)}
+.punch.is-late{border-top-color:var(--late)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.between{justify-content:space-between}
+.stamp{font-family:var(--mono);font-weight:700;font-size:26px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.small{font-size:13px;color:var(--muted)}
+h2{font-family:var(--display);font-size:19px;margin:0;font-weight:700}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.task{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.task:last-child{border-bottom:0}
+.task .txt{flex:1;min-width:0;overflow-wrap:anywhere;padding-top:1px}
+.task.done .txt{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--muted)}
+.tick{flex:none;width:24px;height:24px;border-radius:7px;border:2px solid var(--line);background:transparent;cursor:pointer;display:grid;place-items:center;color:#0d1210;padding:0;transition:background .15s,border-color .15s}
+.tick:hover{border-color:var(--accent)}
+.tick[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}
+.tick svg{width:14px;height:14px}
+.meta{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;padding-top:4px}
+.tag{font-size:11px;padding:1px 6px;border-radius:5px;background:var(--warn-soft);color:var(--warn);margin-left:6px;vertical-align:1px}
+.x{flex:none;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 4px;border-radius:6px;opacity:.55}
+.x:hover{opacity:1;color:var(--late)}
+.add{display:flex;gap:8px}
+input[type=text],input[type=time]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 12px;min-width:0}
+input[type=text]{flex:1}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{font:inherit;font-weight:500;border-radius:9px;padding:9px 16px;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#0d1210;font-weight:700}
+.btn.primary:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{border-style:dashed;color:var(--muted)}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;flex:1;min-width:60px}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .3s}
+.empty{color:var(--muted);font-size:14px;padding:6px 0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-family:var(--mono);font-size:22px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.ledger{display:flex;flex-direction:column}
+.lrow{display:grid;grid-template-columns:5.5em 4.2em auto 1fr 3.4em;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.lrow:last-child{border-bottom:0}
+.lrow .d{font-weight:500}
+.lrow .t,.lrow .n{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.lrow .n{text-align:right}
+details summary{cursor:pointer;list-style:none}
+details summary::-webkit-details-marker{display:none}
+.lrow-tasks{list-style:none;margin:0 0 8px;padding:4px 0 4px 12px;border-left:2px solid var(--line);font-size:13px;color:var(--muted)}
+.lrow-tasks li.ok::before{content:"✓ ";color:var(--accent)}
+.lrow-tasks li.no::before{content:"○ "}
+.settings{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.notice{font-size:13px;color:var(--warn);background:var(--warn-soft);padding:8px 12px;border-radius:9px}
+@media (max-width:480px){
+  h1{font-size:25px}
+  .lrow{grid-template-columns:4.6em 3.8em 1fr 3em}
+  .lrow .bar{display:none}
+  .stat b{font-size:19px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow" id="weekday">今日</div>
+      <h1 id="dateTitle">每日上報</h1>
+    </div>
+    <div id="statusChip"></div>
+  </header>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <section class="card punch" id="today" aria-live="polite">
+    <div class="empty">載入緊你嘅記錄…</div>
+  </section>
+
+  <section class="card" id="historyCard">
+    <div class="row between"><h2>過往記錄</h2><span class="small" id="histHint"></span></div>
+    <div class="stats" id="stats"></div>
+    <div class="ledger" id="ledger"></div>
+  </section>
+
+  <div class="settings">
+    <label for="deadline">每日上報截止時間</label>
+    <input type="time" id="deadline" value="09:30">
+    <span id="saveMsg"></span>
+    <span style="flex:1"></span>
+    <button class="btn" id="exportBtn" type="button">匯出備份</button>
+    <label class="btn" for="importFile" tabindex="0">匯入備份</label>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </div>
+  <p class="small" style="margin:0">記錄只存喺呢部裝置嘅瀏覽器。換機或者清除瀏覽器資料之前，記得先匯出備份。</p>
+</div>
+
+<script>
+(function(){
+  const WD = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"];
+  const pad = n => String(n).padStart(2,"0");
+  const keyOf = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  const hm = iso => { const d=new Date(iso); return pad(d.getHours())+":"+pad(d.getMinutes()); };
+  const uid = () => Math.random().toString(36).slice(2,10);
+  const CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+
+  function h(tag, attrs, ...kids){
+    const el = document.createElement(tag);
+    for (const k in (attrs||{})) {
+      const v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v;
+      else if (k === "html") el.innerHTML = v;
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : String(c));
+    return el;
+  }
+
+  // ---------- state ----------
+  const S = { ready:false, mode:null, settings:{deadline:"09:30"}, days:{}, draft:[] };
+  try { const d = JSON.parse(localStorage.getItem("dr.draft")||"[]"); if (Array.isArray(d)) S.draft = d; } catch(e){}
+  const saveDraft = () => { try { localStorage.setItem("dr.draft", JSON.stringify(S.draft)); } catch(e){} };
+
+  // serialized writes: one at a time
+  let chain = Promise.resolve();
+  const queue = fn => (chain = chain.then(fn).catch(err => {
+    console.error(err);
+    showNotice(err && err.code === "quota_exceeded" ? "儲存空間已滿，請刪除部分舊記錄。" : "儲存失敗，請稍後再試。");
+  }));
+
+  let store = null;
+  function showNotice(msg){ const n=document.getElementById("notice"); n.textContent=msg; n.hidden=!msg; }
+
+  function deadlineFor(dateKey){
+    const [y,m,d] = dateKey.split("-").map(Number);
+    const [hh,mm] = (S.settings.deadline||"09:30").split(":").map(Number);
+    return new Date(y, m-1, d, hh, mm, 0);
+  }
+
+  function saveDay(key){
+    const data = JSON.parse(JSON.stringify(S.days[key]));
+    if (store) store.saveDay(key, data);
+    render();
+  }
+
+  // ---------- storage adapters ----------
+  function init(){
+    const LK = "dr.data.v1";
+    try {
+      const raw = JSON.parse(localStorage.getItem(LK) || "null");
+      if (raw) { S.days = raw.days || {}; S.settings = Object.assign(S.settings, raw.settings||{}); }
+    } catch(e){ showNotice("呢個瀏覽器唔俾儲存資料（可能係私密瀏覽模式），關咗頁面記錄就會冇咗。"); }
+    const persist = () => { try { localStorage.setItem(LK, JSON.stringify({days:S.days, settings:S.settings})); } catch(e){ showNotice("儲存失敗：瀏覽器拒絕寫入資料。"); } };
+    store = { saveDay: persist, saveSettings: persist };
+    S.ready = true; render();
+  }
+
+  // ---------- backup ----------
+  function exportBackup(){
+    const blob = new Blob([JSON.stringify({app:"daily-report", version:1, exportedAt:new Date().toISOString(), days:S.days, settings:S.settings}, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "每日上報備份-" + keyOf(new Date()) + ".json";
+    document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  }
+  function importBackup(file){
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const data = JSON.parse(r.result);
+        if (!data || typeof data.days !== "object") throw new Error("bad");
+        // merge: backup fills in days this device doesn't have; existing days kept
+        S.days = Object.assign({}, data.days, S.days);
+        if (data.settings) S.settings = Object.assign({}, S.settings, data.settings);
+        store.saveDay(); showNotice(""); flash("已匯入 " + Object.keys(data.days).length + " 日記錄");
+        render();
+      } catch(e){ showNotice("呢個檔案唔係有效嘅備份檔，請揀返由「匯出備份」下載嘅 .json 檔。"); }
+    };
+    r.readAsText(file);
+  }
+  function flash(msg){ const m = document.getElementById("saveMsg"); m.textContent = msg; setTimeout(()=>m.textContent="", 2500); }
+  document.getElementById("exportBtn").addEventListener("click", exportBackup);
+  document.querySelector('label[for="importFile"]').addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); document.getElementById("importFile").click(); } });
+  document.getElementById("importFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) importBackup(f); e.target.value = ""; });
+
+  // ---------- actions ----------
+  function addDraft(text){
+    text = text.trim(); if (!text) return;
+    document.getElementById("draftInput").value = "";
+    S.draft.push({id:uid(), text}); saveDraft(); render(); focusSel("#draftInput");
+  }
+  function submitPlan(todayKey){
+    if (!S.draft.length) return;
+    const now = new Date();
+    S.days[todayKey] = {
+      date: todayKey,
+      submittedAt: now.toISOString(),
+      deadline: S.settings.deadline,
+      onTime: now <= deadlineFor(todayKey),
+      tasks: S.draft.map(t => ({id:t.id, text:t.text, done:false, doneAt:null, added:false})),
+    };
+    S.draft = []; saveDraft();
+    saveDay(todayKey);
+  }
+  function toggle(key, tid){
+    const t = S.days[key].tasks.find(x => x.id === tid); if (!t) return;
+    t.done = !t.done; t.doneAt = t.done ? new Date().toISOString() : null;
+    saveDay(key);
+  }
+  function addLater(key, text){
+    text = text.trim(); if (!text) return;
+    document.getElementById("laterInput").value = "";
+    S.days[key].tasks.push({id:uid(), text, done:false, doneAt:null, added:true});
+    saveDay(key); focusSel("#laterInput");
+  }
+  function removeTask(key, tid){
+    const day = S.days[key];
+    day.tasks = day.tasks.filter(x => x.id !== tid);
+    saveDay(key);
+  }
+  function focusSel(sel){ requestAnimationFrame(()=>{ const el=document.querySelector(sel); if(el) el.focus(); }); }
+
+  // ---------- render ----------
+  function render(){
+    const now = new Date();
+    const todayKey = keyOf(now);
+    document.getElementById("weekday").textContent = WD[now.getDay()] + " · " + todayKey;
+    document.getElementById("dateTitle").textContent = (now.getMonth()+1) + "月" + now.getDate() + "日 工作上報";
+    const dl = document.getElementById("deadline");
+    if (document.activeElement !== dl) dl.value = S.settings.deadline || "09:30";
+
+    const chipBox = document.getElementById("statusChip"); chipBox.replaceChildren();
+    const card = document.getElementById("today");
+    if (!S.ready) return;
+
+    // keep half-typed text and focus across re-renders
+    const keep = {};
+    for (const id of ["draftInput","laterInput"]) { const el = document.getElementById(id); if (el) keep[id] = {v:el.value, f:document.activeElement===el}; }
+    requestAnimationFrame(() => { for (const id in keep) { const el = document.getElementById(id); if (el && !el.value) { el.value = keep[id].v; if (keep[id].f) el.focus(); } } });
+
+    const day = S.days[todayKey];
+    const dLine = deadlineFor(todayKey);
+    card.classList.toggle("is-late", !!(day ? !day.onTime : now > dLine));
+    card.replaceChildren();
+
+    if (!day) {
+      const mins = Math.round((dLine - now)/60000);
+      let chip;
+      if (mins > 0) {
+        const txt = mins >= 60 ? Math.floor(mins/60)+" 小時 "+(mins%60)+" 分" : mins+" 分鐘";
+        chip = h("span",{class: mins <= 30 ? "chip warn" : "chip mute"}, "距離 "+S.settings.deadline+" 截止仲有 "+txt);
+      } else chip = h("span",{class:"chip late"}, "已過 "+S.settings.deadline+"，仲未上報");
+      chipBox.append(chip);
+
+      // carry over unfinished from the most recent earlier day
+      const prevKey = Object.keys(S.days).filter(k => k < todayKey).sort().pop();
+      const draftTexts = new Set(S.draft.map(t=>t.text));
+      const carry = prevKey ? S.days[prevKey].tasks.filter(t => !t.done && !draftTexts.has(t.text)) : [];
+
+      const input = h("input",{type:"text", id:"draftInput", placeholder:"今日要做嘅一項工作，撳 Enter 加入", autocomplete:"off",
+        onkeydown:e=>{ if(e.key==="Enter" && !e.isComposing){ e.preventDefault(); addDraft(input.value); } }});
+      card.append(
+        h("div",{class:"row between"}, h("h2",null,"今日計劃"), h("span",{class:"small"}, "上報後就可以逐項 tick 完成")),
+        S.draft.length
+          ? h("ol",{class:"list"}, S.draft.map((t,i) => h("li",{class:"task"},
+              h("span",{class:"meta",style:"padding-top:2px;min-width:1.6em"}, pad(i+1)),
+              h("span",{class:"txt"}, t.text),
+              h("button",{class:"x", "aria-label":"移除 "+t.text, onclick:()=>{ S.draft=S.draft.filter(x=>x.id!==t.id); saveDraft(); render(); }}, "×"))))
+          : h("div",{class:"empty"}, "未有項目。喺下面寫低今日要做嘅嘢，寫齊就撳「上報」。"),
+        h("div",{class:"add"}, input, h("button",{class:"btn", onclick:()=>addDraft(input.value)}, "加入")),
+        h("div",{class:"row between"},
+          carry.length ? h("button",{class:"btn ghost", onclick:()=>{ carry.forEach(t=>S.draft.push({id:uid(), text:t.text})); saveDraft(); render(); }}, "帶入上次未完成（"+carry.length+"）") : h("span"),
+          h("button",{class:"btn primary", disabled: !S.draft.length, onclick:()=>submitPlan(todayKey)}, "上報今日計劃（"+S.draft.length+" 項）"))
+      );
+    } else {
+      const done = day.tasks.filter(t=>t.done).length, total = day.tasks.length;
+      chipBox.append(h("span",{class: done===total && total ? "chip ok" : "chip mute"}, done===total && total ? "全部完成" : "完成 "+done+" / "+total));
+      let lateBy = "";
+      if (!day.onTime) { const m = Math.max(1, Math.round((new Date(day.submittedAt) - deadlineFor(todayKey))/60000)); lateBy = "遲咗 "+(m>=60? Math.floor(m/60)+" 小時 "+(m%60)+" 分" : m+" 分鐘"); }
+      const input = h("input",{type:"text", id:"laterInput", placeholder:"臨時多咗一項？喺度補加", autocomplete:"off",
+        onkeydown:e=>{ if(e.key==="Enter" && !e.isComposing){ e.preventDefault(); addLater(todayKey, input.value); } }});
+      card.append(
+        h("div",{class:"row between"},
+          h("div",null, h("div",{class:"small"},"上報時間"), h("div",{class:"stamp"}, hm(day.submittedAt))),
+          h("span",{class: day.onTime ? "chip ok" : "chip late"}, day.onTime ? "準時上報" : lateBy)),
+        h("div",{class:"row"}, h("div",{class:"bar"}, h("i",{style:"width:"+(total? done/total*100:0)+"%"})), h("span",{class:"small", style:"font-family:var(--mono)"}, done+"/"+total)),
+        total ? h("ul",{class:"list"}, day.tasks.map(t => h("li",{class:"task"+(t.done?" done":"")},
+          h("button",{class:"tick", role:"checkbox", "aria-checked": String(!!t.done), "aria-label": t.text, html: CHECK, onclick:()=>toggle(todayKey, t.id)}),
+          h("span",{class:"txt"}, t.text, t.added ? h("span",{class:"tag"},"後加") : null),
+          t.done ? h("span",{class:"meta"}, hm(t.doneAt)) : null,
+          h("button",{class:"x", "aria-label":"刪除 "+t.text, onclick:()=>removeTask(todayKey, t.id)}, "×"))))
+          : h("div",{class:"empty"}, "清單已清空。"),
+        h("div",{class:"add"}, input, h("button",{class:"btn", onclick:()=>addLater(todayKey, input.value)}, "補加"))
+      );
+    }
+    renderHistory(todayKey);
+  }
+
+  function renderHistory(todayKey){
+    const keys = Object.keys(S.days).sort().reverse();
+    // streak of consecutive calendar days reported on time, ending today (or yesterday if today not yet reported)
+    let streak = 0; const c = new Date(); if (!S.days[todayKey]) c.setDate(c.getDate()-1);
+    while (true) { const d = S.days[keyOf(c)]; if (d && d.onTime) { streak++; c.setDate(c.getDate()-1); } else break; }
+    const last7 = []; for (let i=0;i<7;i++){ const d=new Date(); d.setDate(d.getDate()-i); const r=S.days[keyOf(d)]; if (r) last7.push(r); }
+    let tDone=0,tAll=0; last7.forEach(r=>{ tAll+=r.tasks.length; tDone+=r.tasks.filter(t=>t.done).length; });
+    const onTime7 = last7.filter(r=>r.onTime).length;
+
+    document.getElementById("stats").replaceChildren(
+      h("div",{class:"stat"}, h("b",null, streak+" 日"), h("span",null,"連續準時上報")),
+      h("div",{class:"stat"}, h("b",null, onTime7+"/7"), h("span",null,"近 7 日準時")),
+      h("div",{class:"stat"}, h("b",null, tAll? Math.round(tDone/tAll*100)+"%" : "–"), h("span",null,"近 7 日完成率"))
+    );
+
+    const past = keys.filter(k => k !== todayKey).slice(0, 30);
+    document.getElementById("histHint").textContent = past.length ? "撳一日睇返細節" : "";
+    const ledger = document.getElementById("ledger");
+    if (!past.length) { ledger.replaceChildren(h("div",{class:"empty"}, "第一次上報之後，每日嘅上報時間同完成情況會記錄喺呢度。")); return; }
+    ledger.replaceChildren(...past.map(k => {
+      const r = S.days[k], dt = new Date(k+"T00:00:00");
+      const done = r.tasks.filter(t=>t.done).length, total = r.tasks.length;
+      return h("details",null,
+        h("summary",{class:"lrow"},
+          h("span",{class:"d"}, (dt.getMonth()+1)+"/"+dt.getDate()+" "+WD[dt.getDay()].slice(2)),
+          h("span",{class:"t"}, hm(r.submittedAt)),
+          h("span",{class: r.onTime ? "chip ok" : "chip late"}, r.onTime ? "準時" : "遲報"),
+          h("div",{class:"bar"}, h("i",{style:"width:"+(total? done/total*100:0)+"%"})),
+          h("span",{class:"n"}, done+"/"+total)),
+        h("ul",{class:"lrow-tasks"}, r.tasks.map(t => h("li",{class:t.done?"ok":"no"}, t.text))));
+    }));
+  }
+
+  // ---------- settings ----------
+  document.getElementById("deadline").addEventListener("change", e => {
+    if (!e.target.value) return;
+    S.settings = Object.assign({}, S.settings, {deadline: e.target.value});
+    if (store) store.saveSettings(S.settings);
+    flash("已儲存");
+    render();
+  });
+
+  render();
+  init();
+  if (location.hash === "#report") focusSel("#draftInput");
+  setInterval(render, 30000); // refresh countdown and date rollover only; never writes
+})();
+</script>
+
+</body>
+</html>
